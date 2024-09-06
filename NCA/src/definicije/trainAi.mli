@@ -1,0 +1,1 @@
+type training_mode = Growing | Persistent | Regenerating

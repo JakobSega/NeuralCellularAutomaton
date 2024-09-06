@@ -4,7 +4,7 @@ open Definicije
 let _do_nothing cell _neighbors = cell
 
 (* Define the update rule *)
-let custom_update_rule cell neighbors =
+let _custom_update_rule cell neighbors =
   if List.exists (fun neighbor -> Cell.get_alpha neighbor < 0.1) neighbors then
     Cell.set_rgb (0.0, 0.0, 0.0) (Cell.set_alpha 0.0 cell)
   else
@@ -12,8 +12,8 @@ let custom_update_rule cell neighbors =
 
 
 (* Initialize the model *)
-let init_model =
-  NcaModel.init 250 250 (Cell.init (1.0, 0.0, 1.0) 1.0 [||]) custom_update_rule
+(*let init_model =
+  NcaModel.init 250 250 (Cell.init (1.0, 0.0, 1.0) 1.0 [||]) custom_update_rule *)
 
 (* Helper function to get the first element of a list, safely *)
 let hd_opt = function
@@ -23,10 +23,10 @@ let hd_opt = function
 (* Define the app *)
 let app =
   Vdom.simple_app
-    ~init:init_model
+    ~init:(NcaModel.init ())
     ~view:NcaView.view
     ~update:NcaModel.update
-    ()
+
 
 (* Run the application *)
 let () =
@@ -38,7 +38,7 @@ let () =
       |> hd_opt
       |> Option.value ~default:(Js_browser.Document.create_element document "div")
     in
-    Vdom_blit.run app
+    Vdom_blit.run (app ())
     |> Vdom_blit.dom
     |> Js_browser.Element.append_child container
   in

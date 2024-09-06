@@ -1,2 +1,3 @@
 (library
- (name definicije))
+ (name definicije)
+ (modules avtomat cell cellularAutomaton grid ncaRunner stanje trainAi trak zagnaniAvtomat))

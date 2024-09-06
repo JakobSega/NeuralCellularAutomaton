@@ -1,0 +1,4 @@
+(library
+ (name ai)
+ (modules aiModel)
+ (libraries definicije))

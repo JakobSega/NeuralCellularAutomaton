@@ -1,6 +1,6 @@
 (executable
  (name ncaSpletniVmesnik)
- (libraries vdom js_of_ocaml definicije)
+ (libraries vdom js_of_ocaml stb_image definicije ai)
  (modes js)
  (promote
   (until-clean)
