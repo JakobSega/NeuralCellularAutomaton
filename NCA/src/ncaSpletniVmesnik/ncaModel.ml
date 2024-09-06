@@ -19,13 +19,14 @@ type msg =
   | KeyPress of int
   | ButtonClick of training_mode
   | FileDropped of string           (* Path to the dropped image *)
-  | ImageProcessed of Cell.t Grid.t        (* Once the image is processed, pass the grid *)
-  | TrainingCompleted of AiModel.t  (* Once training is complete, pass the AI model *)
+  | ProcessImage of string        (* Once the image is processed, pass the grid *)
+  | BeginTraining of Cell.t Grid.t
 
 (* Model definition with optional avtomat and ai_model *)
 type model = {
   current_page : page;
   avtomat : Cell.t NcaRunner.t option;
+  file_path: string option;  (* Add file_path to store the selected file path *)
   ai_model : AiModel.t option;
   selected_mode : training_mode option;  (* Track the selected training mode *)
 }
@@ -34,6 +35,7 @@ type model = {
 let init () = {
   current_page = InitialPage;
   avtomat = None;
+  file_path = None;  (* Add file_path to store the selected file path *)
   ai_model = None;
   selected_mode = None;
 }
@@ -45,10 +47,10 @@ let init_grid width height cell update_rule =
   Some nca
 
 (* Define a no-op update rule *)
-let _do_nothing cell _neighbors = cell
+let do_nothing cell _neighbors = cell
 
 (* Update function to handle cell clicks, key presses, and page switches *)
-let rec update model = function
+let update model = function
   | Klik (x, y) ->
       (match model.avtomat with
        | Some avtomat ->
@@ -93,32 +95,28 @@ let rec update model = function
       (* Update the page to FileDropPage and store the selected training mode *)
       { model with current_page = FileDropPage; selected_mode = Some mode }
 
-  | FileDropped file_path ->
-      (* Transition to the ImageProcessingPage and start processing the image *)
-      let updated_model = { model with current_page = ImageProcessingPage } in
-      (* Process the image and update model *)
-      let grid = ImageProcessor.process_image file_path in
-      (* Trigger the ImageProcessed message after processing the image *)
-      update updated_model (ImageProcessed grid)
-
-  | ImageProcessed grid ->
-      (* Initialize the NCA with the processed grid using _do_nothing rule *)
-      let new_nca = CellularAutomaton.init grid _do_nothing in
-      (* Automatically start training and transition to TrainingPage *)
-      let updated_model = { model with current_page = TrainingPage; avtomat = Some (NcaRunner.init new_nca) } in
-      (* Start the training process in the background and trigger TrainingCompleted when done *)
-      let training_mode = match model.selected_mode with
-        | Some mode -> mode
-        | None -> Growing (* Default mode *)
-      in
-      let trained_model = AiModel.train_with_image grid training_mode in
-      update updated_model (TrainingCompleted trained_model)
-
-  | TrainingCompleted trained_model ->
-      (* After training, switch to GridPage and apply the new update_rule *)
-      let update_rule = AiModel.get_update_rule trained_model in
-      let updated_nca = match model.avtomat with
-        | _ ->
-          init_grid 200 200 (Cell.init (0.0, 0.0, 0.0) 1.0 [||]) update_rule
-      in
-      { model with current_page = GridPage; ai_model = Some trained_model; avtomat = updated_nca }
+  | FileDropped file_name ->
+        (* Update the model with the selected file path and transition to the next page *)
+        { model with current_page = ImageProcessingPage; file_path = Some file_name }
+    
+  | ProcessImage file_name ->
+        (* Use the process_image function to convert the image to a grid *)
+        let grid = ImageProcessor.process_image file_name in
+        (* Transition to the TrainingPage with the grid *)
+        { model with current_page = TrainingPage ; avtomat = Some (NcaRunner.init (CellularAutomaton.init grid do_nothing)) }
+      
+  | BeginTraining grid ->
+        (* Automatically start training and transition to TrainingPage *)
+        let training_mode = match model.selected_mode with
+          | Some mode -> mode
+          | None -> Growing (* Default mode *)
+        in
+        let trained_model = AiModel.train_with_image grid training_mode in
+        (* After training, switch to GridPage and apply the new update_rule *)
+        let update_rule = AiModel.get_update_rule trained_model in
+        let updated_nca = match model.avtomat with
+          | Some _avtomat ->
+            init_grid 200 200 (Cell.init (0.0, 0.0, 0.0) 1.0 [||]) update_rule
+          | None -> None
+        in
+        { model with current_page = GridPage; ai_model = Some trained_model; avtomat = updated_nca }
