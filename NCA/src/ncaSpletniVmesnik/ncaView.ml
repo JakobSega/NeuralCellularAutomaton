@@ -36,17 +36,12 @@ let view_grid_non_interactive model =
           Vdom.elt "tr" cells
         ) in
       Vdom.elt "div" [
-        Vdom.text "Training in progress...";  (* Add this text *)
+        Vdom.text "Training in progress...";
         Vdom.elt "table" [ Vdom.elt "tbody" rows ];
 
         (* Add a button to trigger BeginTraining message *)
         Vdom.elt "button" 
-          ~a:[ Vdom.onclick (fun _ -> 
-            match NcaRunner.get_grid avtomat with
-            | grid -> BeginTraining grid
-            (* | _ -> BeginTraining (Grid.init 20 20 (Cell.init (0.0, 0.0, 0.0) 1.0 [||])) *)
-            ) 
-          ] [ Vdom.text "Begin Training" ];
+          ~a:[ Vdom.onclick (fun _ -> BeginTraining) ] [ Vdom.text "Begin Training" ];
       ]
   | None -> Vdom.elt "div" [ Vdom.text "Grid is not available" ]
 
@@ -104,65 +99,109 @@ let view_grid model =
       [ Vdom.elt "tbody" rows ]
   | None -> Vdom.elt "div" [ Vdom.text "Grid is not available" ]
 
+let view_file_path_page model =
+  match model.selected_mode with
+  | Some _ ->
+    Vdom.elt "div" [
+      Vdom.elt "h2" [ Vdom.text "Enter the path to the image to process" ];
+
+      (* Text input for image path *)
+      Vdom.elt "input"
+        ~a:[
+          Vdom.attr "type" "text";
+          Vdom.attr "id" "imagePath";
+          Vdom.attr "placeholder" "Enter image path here";
+          Vdom.onchange (fun ev ->
+            let target_opt = Js_of_ocaml.Js.Opt.to_option (Js_of_ocaml.Js.Unsafe.get ev "target") in
+            match target_opt with
+            | Some target ->
+              let path = Js_of_ocaml.Js.to_string (Js_of_ocaml.Js.Unsafe.get target "value") in
+              FilePath path
+            | None -> FilePath "C:\\Users\\blin\\Documents\\Programiranje1\\Projekt_PROG2\\emoji.png" (* Default case *)
+          );
+        ] [];
+            
+      (* Button to trigger ProcessImage message (optional test) *)
+      Vdom.elt "button"
+        ~a:[
+          Vdom.onclick (fun _ -> FilePath "C:\\Users\\blin\\Documents\\Programiranje1\\Projekt_PROG2\\emoji.png") 
+        ] [ Vdom.text "Test ProcessImage message" ];
+    ]
+  | None -> Vdom.elt "div" [ Vdom.text "No mode was selected" ]
+  
+  
+  
+  
+
+(* Page view definitions *)
 let view model =
   match model.current_page with
   | InitialPage ->
-      Vdom.elt "div" [
-        Vdom.elt "h1" [ Vdom.text "Welcome to the Automaton App!" ];
+    Vdom.elt "div" [
+      Vdom.elt "h1" [ Vdom.text "Welcome to the Automaton App!" ];
 
-        (* Button 1: Growing *)
-        Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Growing) ] [ Vdom.text "Growing" ];
-        Vdom.elt "p" [ Vdom.text "In this mode, the automaton will exhibit a growing pattern over time." ];
+      (* Button 1: Growing *)
+      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Growing) ] [ Vdom.text "Growing" ];
+      Vdom.elt "p" [ Vdom.text "In this mode, the automaton will exhibit a growing pattern over time." ];
+
+      (* Button 2: Persistent *)
+      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Persistent) ] [ Vdom.text "Persistent" ];
+      Vdom.elt "p" [ Vdom.text "In this mode, the automaton will maintain a stable or persistent pattern." ];
+
+      (* Button 3: Regenerating *)
+      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Regenerating) ] [ Vdom.text "Regenerating" ];
+      Vdom.elt "p" [ Vdom.text "In this mode, the automaton will exhibit a regenerating or cyclical behavior." ];
+    ]
+
+  | FilePathPage -> view_file_path_page model
+    (*Vdom.elt "div" [
+      Vdom.elt "h2" [ Vdom.text "Upload an image to process" ];
   
-        (* Button 2: Persistent *)
-        Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Persistent) ] [ Vdom.text "Persistent" ];
-        Vdom.elt "p" [ Vdom.text "In this mode, the automaton will maintain a stable or persistent pattern." ];
-  
-        (* Button 3: Regenerating *)
-        Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Regenerating) ] [ Vdom.text "Regenerating" ];
-        Vdom.elt "p" [ Vdom.text "In this mode, the automaton will exhibit a regenerating or cyclical behavior." ];
-      ]
-  
-  | FileDropPage ->
-      Vdom.elt "div" [
-        Vdom.elt "h2" [ Vdom.text "Upload an image to process" ];
-    
-        (* Create a file input element to select a file *)
-        Vdom.elt "input"
-          ~a:[
-            Vdom.attr "type" "file";
-            Vdom.attr "id" "myFile";  (* ID to associate with the form *)
-            Vdom.attr "name" "filename";
-            Vdom.attr "accept" "image/*";  (* Restrict file types to images *)
-            Vdom.onchange (fun ev ->
-              let target = Js_of_ocaml.Js.Unsafe.get ev "target" in
+      (* Create a file input element to select a file *)
+      Vdom.elt "input"
+        ~a:[
+          Vdom.attr "type" "file";
+          Vdom.attr "accept" "image/*";  (* Restrict file types to images *)
+          Vdom.onchange (fun ev ->
+            let target_opt = Js_of_ocaml.Js.Opt.to_option ev##.target in
+            match target_opt with
+            | Some target ->
               let files = Js_of_ocaml.Js.Unsafe.get target "files" in
               let file = Js_of_ocaml.Js.array_get files 0 in
-              let file_name = Js_of_ocaml.Js.to_string (Js_of_ocaml.Js.Unsafe.get file "name") in
-              (* Update the model with the selected file path *)
-              FileDropped file_name  (* This triggers an update to store the file path in the model *)
-            );
-          ] [];
-    
-        (* Create a button to trigger the FileDropped message *)
-        Vdom.elt "button"
-          ~a:[
-            Vdom.onclick (fun _ -> FileDropped "C:\\Users\\blin\\Documents\\Programiranje1\\Projekt_PROG2\\emoji.png") ] [ Vdom.text "Test FileDropped message" ];
-      ]
-     
-  | ImageProcessingPage ->
-      Vdom.elt "div" [
-        (* Button 1: Growing *)
-        Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Regenerating
-          (*match model.file_path with
-            | Some file_name -> ProcessImage file_name;
-            | None -> ProcessImage "C:\\Users\\blin\\Documents\\Programiranje1\\Projekt_PROG2\\emoji.png";*)
-            ) ] [ Vdom.text "Click to process the image and start the training of the ai model." ];
-      ]
+              if Js_of_ocaml.Js.Optdef.test file then
+                let file_reader = Js_of_ocaml.File.fileReader () in
+                file_reader##readAsArrayBuffer file;
+                
+                (* Once the file is read, process the result *)
+                Js_of_ocaml.Js.Unsafe.set file_reader "onload" 
+                  (Js_of_ocaml.Js.wrap_callback (fun () ->
+                    let file_content = Js_of_ocaml.Typed_array.Bigstring.of_arrayBuffer (Js_of_ocaml.Js.Unsafe.coerce file_reader##.result) in
+                    (* Send the file content as ArrayBuffer (binary) to OCaml *)
+                    FileDropped file_content  (* Send the raw image data to OCaml for further processing *)
+                  ))
+              else
+                FileDropped (Js_of_ocaml.Typed_array.Bigstring.create 0)  (* Handle no file selected *)
+            | None -> 
+              FileDropped (Js_of_ocaml.Typed_array.Bigstring.create 0)  (* Handle no target element *)
+          );
+        ] []
+    ]*)
 
-  | TrainingPage ->
-      view_grid_non_interactive model;
+  | ImageProcessingPage ->
+    Vdom.elt "div" [
+      Vdom.text (Printf.sprintf "Image path: %s" (match model.path with
+      | Some path -> path
+      | _ -> "No path."));  (* Inform the user of the path to be used *)
       
-  | GridPage ->
-      view_grid model
-  
+      (* Add a button to manually trigger image processing *)
+      (match model.path with
+       | Some _ ->
+         Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ProcessImage) ] [ Vdom.text "Click to process Image." ]
+       | None ->
+         Vdom.elt "div" [ Vdom.text "No image data available." ]
+      )
+    ]
+
+  | TrainingPage -> view_grid_non_interactive model
+
+  | GridPage -> view_grid model
