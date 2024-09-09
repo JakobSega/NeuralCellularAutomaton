@@ -1,10 +1,15 @@
-(* aiModel.ml *)
+(*
 
-(* Open the trainAi module to access the training_mode type *)
-open Definicije.TrainAi
+
+
+
+
+
+
+
 
 (* Mock AI Model *)
-type t = {
+type td = {
   name: string;
 }
 
@@ -23,3 +28,4 @@ let train_with_image grid mode =
   { name = Printf.sprintf "Trained AI Model (%s) (%d)" mode_string width }
 
 let get_update_rule _t = (fun x _ -> x)
+*)

@@ -4,7 +4,6 @@ let init width height init_cell =
   Array.init height (fun _ -> Array.init width (fun _ -> init_cell))
 
 let get_cell grid x y = grid.(y).(x)
-
 let set_cell grid x y cell = grid.(y).(x) <- cell
 
 let get_neighbors grid x y =
@@ -22,5 +21,4 @@ let get_neighbors grid x y =
   !neighbors
 
 let height grid = Array.length grid
-
 let width grid = Array.length grid.(0)
