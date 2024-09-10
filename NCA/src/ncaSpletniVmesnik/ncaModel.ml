@@ -78,7 +78,7 @@ let update model = function
         | None -> model)
 
   | ClickPaint (x, y) ->
-   (match model.avtomat with
+    (match model.avtomat with
     | Some avtomat ->
        let grid = NcaRunner.get_grid avtomat in
        let cell = 
@@ -105,19 +105,20 @@ let update model = function
     | None -> model)
   
   | KeyPress n ->
-      (match model.avtomat with
-       | Some avtomat ->
-           let steps = int_of_float (2. ** float_of_int n) in
-           let updated_nca = NcaRunner.run avtomat steps in
-           { model with avtomat = Some updated_nca }
-       | None -> model)
+    (match model.avtomat with
+     | Some avtomat ->
+         let steps = int_of_float (2. ** float_of_int n) in
+         let updated_nca = NcaRunner.run avtomat steps in
+         { model with avtomat = Some updated_nca }
+     | None -> model)
 
-  | SetColor (r, g, b, a) -> { model with color = Some (r, g, b, a) }
+  | SetColor (r, g, b, a) ->   Printf.printf "Test message\n" ;{ model with color = Some (r, g, b, a) }
 
   | ButtonClick mode ->
       { model with current_page = PaintPage; selected_mode = Some mode ; avtomat = init_painting_grid () }
 
   | BeginTraining ->
+    Printf.printf "Test message\n" ;
     let _training_mode = match model.selected_mode with
       | Some mode -> mode
       | None -> Growing
@@ -129,8 +130,9 @@ let update model = function
     let trained_update_rule = Network.train_network initial_grid in
     
     (* Initialize the grid with the trained update rule *)
-    let updated_nca = init_grid 120 120 (Cell.init (1.0, 1.0, 1.0) 1.0 [||]) trained_update_rule in
-    
+    let grid = Grid.init 120 120 (Cell.init (1.0, 1.0, 1.0) 0.0 (Array.make 12 0.0 )) in
+    Grid.set_cell grid 60 60 (Cell.init (0.0, 0.0, 0.0) 1.0 (Array.make 12 1.0 ));
+    let updated_nca = Some (NcaRunner.init (CellularAutomaton.init grid trained_update_rule)) in
     (* Update the model *)
     { model with current_page = GridPage ; avtomat = updated_nca }
     

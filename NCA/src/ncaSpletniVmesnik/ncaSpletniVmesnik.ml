@@ -10,25 +10,16 @@ let _custom_update_rule cell neighbors =
   else
     cell
 
-
-(* Initialize the model *)
-(*let init_model =
-  NcaModel.init 250 250 (Cell.init (1.0, 0.0, 1.0) 1.0 [||]) custom_update_rule *)
-
-(* Helper function to get the first element of a list, safely *)
 let hd_opt = function
   | [] -> None
   | x :: _ -> Some x
 
-(* Define the app *)
 let app =
   Vdom.simple_app
     ~init:(NcaModel.init ())
     ~view:NcaView.view
     ~update:NcaModel.update
-
-
-(* Run the application *)
+    
 let () =
   let open Js_browser in
   let run () =
