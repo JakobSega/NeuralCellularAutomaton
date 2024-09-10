@@ -14,8 +14,13 @@ type msg =
   | ClickPaint of int * int
   | DoubleClick of int*int
   | KeyPress of int
+  | KeyPressLeft
+  | KeyPressRight
+  | KeyPressUp
+  | KeyPressDown
   | SetColor of float * float * float * float
   | ButtonClick of training_mode
+  | Demonstration
   | BeginTraining
 
 (* Model definition with optional avtomat and ai_model *)
@@ -111,6 +116,51 @@ let update model = function
          let updated_nca = NcaRunner.run avtomat steps in
          { model with avtomat = Some updated_nca }
      | None -> model)
+
+  | KeyPressLeft ->
+    (match model.avtomat with
+     | Some avtomat -> 
+      let new_update_rule = MoveRules.move_left in
+      let nca = NcaRunner.get_nca avtomat in
+      let updated_nca = CellularAutomaton.set_update_rule nca new_update_rule in
+      { model with avtomat = Some (NcaRunner.set_nca avtomat updated_nca) }
+     | None -> model)
+
+  | KeyPressRight ->
+    (match model.avtomat with
+     | Some avtomat -> 
+      let new_update_rule = MoveRules.move_right in
+      let nca = NcaRunner.get_nca avtomat in
+      let updated_nca = CellularAutomaton.set_update_rule nca new_update_rule in
+      { model with avtomat = Some (NcaRunner.set_nca avtomat updated_nca) }
+     | None -> model)
+
+  | KeyPressUp ->
+    (match model.avtomat with
+     | Some avtomat -> 
+      let new_update_rule = MoveRules.move_up in
+      let nca = NcaRunner.get_nca avtomat in
+      let updated_nca = CellularAutomaton.set_update_rule nca new_update_rule in
+      { model with avtomat = Some (NcaRunner.set_nca avtomat updated_nca) }
+     | None -> model)
+
+  | KeyPressDown ->
+    (match model.avtomat with
+    | Some avtomat -> 
+     let new_update_rule = MoveRules.move_down in
+     let nca = NcaRunner.get_nca avtomat in
+      let updated_nca = CellularAutomaton.set_update_rule nca new_update_rule in
+     { model with avtomat = Some (NcaRunner.set_nca avtomat updated_nca) }
+    | None -> model)
+
+  | Demonstration ->
+    (match model.avtomat with
+    | Some avtomat -> 
+      let new_update_rule = MoveRules.move_down in
+      let nca = NcaRunner.get_nca avtomat in
+       let updated_nca = CellularAutomaton.set_update_rule nca new_update_rule in
+      { model with current_page = GridPage ; avtomat = Some (NcaRunner.set_nca avtomat updated_nca) }
+    | None -> model)
 
   | SetColor (r, g, b, a) ->   Printf.printf "Test message\n" ;{ model with color = Some (r, g, b, a) }
 

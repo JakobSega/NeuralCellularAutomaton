@@ -14,13 +14,14 @@ let create_matrix rows cols =
 let create_vector size =
   Array.make size 0.0
 
-(* Randomly initialize a matrix *)
+(* Randomly initialize a matrix with more diversity *)
 let random_matrix rows cols =
-  Array.init rows (fun _ -> Array.init cols (fun _ -> Random.float 1.0))
+  Array.init rows (fun _ -> Array.init cols (fun _ -> Random.float 2.0 -. 1.0)) (* Values between -1.0 and 1.0 *)
 
-(* Randomly initialize a vector *)
+(* Randomly initialize a vector with more diversity *)
 let random_vector size =
-  Array.init size (fun _ -> Random.float 1.0)
+  Array.init size (fun _ -> Random.float 2.0 -. 1.0) (* Values between -1.0 and 1.0 *)
+
 
 (* ReLU activation function *)
 let relu x = if x > 0.0 then x else 0.0
@@ -143,8 +144,9 @@ let update_rule network =
     let output = forward_network network [|input|] in
     output_vec_to_cell output.(0)
 
+(*
 (* Define the crossover function *)
-let crossover parent1 parent2 =
+let _crossover1 parent1 parent2 =
   let crossover_layer layer1 layer2 =
     let rows = Array.length layer1.weights in
     let cols = Array.length layer1.weights.(0) in
@@ -169,9 +171,42 @@ let crossover parent1 parent2 =
   { layer1 = crossover_layer parent1.layer1 parent2.layer1;
     layer2 = crossover_layer parent1.layer2 parent2.layer2;
     loss = None }
+*)
 
+(* Define the BLX crossover function *)
+let crossover2 parent1 parent2 alpha =
+  let crossover_layer layer1 layer2 =
+    let rows = Array.length layer1.weights in
+    let cols = Array.length layer1.weights.(0) in
+    let new_weights = create_matrix rows cols in
+    let new_biases = create_vector (Array.length layer1.biases) in
+    for i = 0 to rows - 1 do
+      for j = 0 to cols - 1 do
+        let w1 = layer1.weights.(i).(j) in
+        let w2 = layer2.weights.(i).(j) in
+        let diff = abs_float (w1 -. w2) in
+        let min_val = min w1 w2 -. alpha *. diff in
+        let max_val = max w1 w2 +. alpha *. diff in
+        new_weights.(i).(j) <- Random.float (max_val -. min_val) +. min_val
+      done
+    done;
+    for i = 0 to Array.length new_biases - 1 do
+      let b1 = layer1.biases.(i) in
+      let b2 = layer2.biases.(i) in
+      let diff = abs_float (b1 -. b2) in
+      let min_val = min b1 b2 -. alpha *. diff in
+      let max_val = max b1 b2 +. alpha *. diff in
+      new_biases.(i) <- Random.float (max_val -. min_val) +. min_val
+    done;
+    { weights = new_weights; biases = new_biases; activation = layer1.activation }
+  in
+  { layer1 = crossover_layer parent1.layer1 parent2.layer1;
+    layer2 = crossover_layer parent1.layer2 parent2.layer2;
+    loss = None }
+
+(*
 (* Define the mutate function *)
-let mutate network =
+let _mutate1 network =
   let mutate_layer layer =
     let rows = Array.length layer.weights in
     let cols = Array.length layer.weights.(0) in
@@ -190,9 +225,32 @@ let mutate network =
   { layer1 = mutate_layer network.layer1;
     layer2 = mutate_layer network.layer2;
     loss = network.loss }
+*)
+
+(* Define the mutate function with adaptive mutation *)
+let mutate2 network stagnation_counter =
+  let mutation_rate = if stagnation_counter > 5 then 0.4 else 0.2 in
+  let mutate_layer layer =
+    let rows = Array.length layer.weights in
+    let cols = Array.length layer.weights.(0) in
+    for i = 0 to rows - 1 do
+      for j = 0 to cols - 1 do
+        if Random.float 1.0 < mutation_rate then
+          layer.weights.(i).(j) <- layer.weights.(i).(j) +. (Random.float 0.4 -. 0.2) (* Larger mutation step *)
+      done
+    done;
+    for i = 0 to Array.length layer.biases - 1 do
+      if Random.float 1.0 < mutation_rate then
+        layer.biases.(i) <- layer.biases.(i) +. (Random.float 0.4 -. 0.2) (* Larger mutation step *)
+    done;
+    layer
+  in
+  { layer1 = mutate_layer network.layer1;
+    layer2 = mutate_layer network.layer2;
+    loss = network.loss }
 
 let target_grid grid n =
-  let large_grid = Grid.init (n * 2) (n * 2) (Cell.init (1.0, 1.0, 1.0) 0.0 (Array.make 12 0.0)) in
+  let large_grid = Grid.init (n + 2) (n + 2) (Cell.init (1.0, 1.0, 1.0) 0.0 (Array.make 12 0.0)) in
   let place_in_middle small_grid large_grid =
     let large_width = Grid.width large_grid in
     let small_width = Grid.width small_grid in
@@ -221,14 +279,6 @@ let target_grid grid n =
   in
   place_in_middle grid large_grid
     
-
-(*   
-let starting_grid () =
-  let grid = Grid.init 40 40 (Cell.init (1.0, 1.0, 1.0) 0.0 (Array.make 12 0.0)) in
-  let hidden = Array.make 12 1.0 in
-  Grid.set_cell grid 20 20 (Cell.init (0.0, 0.0, 0.0) 1.0 hidden);
-  grid
-*)
 let distance grid1 grid2 =
   let width = Grid.width grid1 in
   let height = Grid.height grid1 in
@@ -249,17 +299,20 @@ let distance grid1 grid2 =
   done;
   !total_distance
 
-(* Define the new train_network function using a progressive training approach *)
+(* Define the new train_network function with adjusted mutation *)
 let train_network grid =
-  let max_generations_per_size = 1 in
-  let population_size = 20 in
-  let mutation_rate = 0.5 in
-  let crossover_rate = 0.8 in
-  let desired_distance = 1.0 in  (* The desired distance threshold *)
-  Printf.printf "Starting training\n" ;
+  let base_mutation_rate = 0.2 in
+  let mutation_boost = 0.5 in  (* Boosted mutation rate when grid size increases *)
+  let decay_factor = 0.01 in  (* How quickly mutation rate decays over generations *)
+  let max_generations_per_size = 1 in  (* Initial value for the maximum generations *)
+  let population_size = 100 in  (* Initial value for the population size *)
+  let crossover_rate = 0.5 in
+  let alpha = 0.1 in
+  let desired_distance = 1.0 in
+  Printf.printf "Starting training\n";
   let population = Array.init population_size (fun _ -> initialize_network 144 200 16) in
 
-  let rec train population generation n =
+  let rec train population generation n stagnation_counter start_generation =
     if n > 20 then
       let best_network = Array.fold_left (fun best network ->
         match network.loss with
@@ -276,13 +329,19 @@ let train_network grid =
       let evaluate network =
         let nca = CellularAutomaton.init starting_grid (update_rule network) in
         let runner = NcaRunner.init nca in
-        let final_nca = NcaRunner.run runner 100 in
+        let final_nca = NcaRunner.run runner 40 in
         let final_grid = NcaRunner.get_grid final_nca in
         let dist = distance final_grid target_grid in
         network.loss <- Some dist;
         dist
       in
-      let rec inner_train population gen_remaining =
+
+      let calculate_adjusted_mutation_rate current_generation start_generation =
+        let elapsed_generations = current_generation - start_generation in
+        base_mutation_rate +. mutation_boost -. (decay_factor *. float_of_int elapsed_generations)
+      in
+
+      let rec inner_train population gen_remaining stagnation_counter start_generation =
         if gen_remaining = 0 then population
         else (
           Printf.printf "Evaluating population for %d, generation %d, remaining generations %d\n" n generation gen_remaining;
@@ -292,25 +351,35 @@ let train_network grid =
                     (match n2.loss with Some l -> l | None -> max_float)
           ) population;
           let best_network = Array.get population 0 in
-          (match best_network.loss with Some l -> Printf.printf "Loss: %f\n" l; | None -> Printf.printf "No loss\n";);
+          let best_loss = match best_network.loss with Some l -> l | None -> max_float in
+          Printf.printf "Best Loss: %f\n" best_loss;
+
+          (* Check if stagnation occurs *)
+          let new_stagnation_counter = if best_loss > desired_distance then stagnation_counter + 1 else 0 in
+
           match best_network.loss with
           | Some dist when dist <= desired_distance -> population
           | _ ->
+            let adjusted_mutation_rate = calculate_adjusted_mutation_rate generation start_generation in
             let new_population = Array.init population_size (fun i ->
               if i < population_size / 2 then Array.get population i
               else if Random.float 1.0 < crossover_rate then
                 let parent1 = Array.get population (Random.int (population_size / 2)) in
                 let parent2 = Array.get population (Random.int (population_size / 2)) in
-                crossover parent1 parent2
+                crossover2 parent1 parent2 alpha
               else
                 let parent = Array.get population (Random.int (population_size / 2)) in
-                if Random.float 1.0 < mutation_rate then mutate parent else parent
+                if Random.float 1.0 < adjusted_mutation_rate then
+                  mutate2 parent new_stagnation_counter
+                else
+                  parent
             ) in
-            inner_train new_population (gen_remaining - 1)
+            inner_train new_population (gen_remaining - 1) new_stagnation_counter start_generation
         )
       in
-      let new_population = inner_train population (max_generations_per_size + 20 - n) in
-      train new_population (generation + 1) (n + 2)
+
+      let new_population = inner_train population (max_generations_per_size + 20 - n) stagnation_counter start_generation in
+      train new_population (generation + 1) (n + 2) stagnation_counter start_generation
   in
 
-  train population 0 2
+  train population 0 2 0 0

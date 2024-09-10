@@ -50,14 +50,16 @@ let view_grid model =
            Vdom.style "border-spacing" "0"; (* Remove space between cells *)
            Vdom.style "width" (Printf.sprintf "%dpx" (width * cell_size));
            Vdom.onkeydown (fun e ->
-             let key_code = e.which in
-             let key_number =
-               if key_code >= 48 && key_code <= 57 then (* Check if the key is 0-9 *)
-                 key_code - 48  (* Convert key code to integer *)
-               else
-                 0  (* Default to 0 for non-digit keys *)
-             in
-             KeyPress key_number  (* Send KeyPress message *)
+              let key_code = e.which in
+              if key_code >= 48 && key_code <= 57 then (* Check if the key is 0-9 *)
+                KeyPress (key_code - 48)  (* Convert key code to integer *)
+              else
+                match key_code with
+                | 37 -> KeyPressLeft  (* Left arrow key *)
+                | 39 -> KeyPressRight (* Right arrow key *)
+                | 38 -> KeyPressUp    (* Up arrow key *)
+                | 40 -> KeyPressDown  (* Down arrow key *)
+                | _  -> KeyPress 0  (* Default to current rule *)
            );
            Vdom.attr "tabindex" "0"; (* Make the table focusable *)
          ]
@@ -140,6 +142,11 @@ let view_painting_grid model =
       Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> BeginTraining) ] [ Vdom.text "Begin Training" ]
     in
 
+    (* Button for Demonstration *)
+    let begin_demonstration_button =
+      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> Demonstration) ] [ Vdom.text "Begin Demonstration" ]
+    in
+
     (* Create the grid rows with square cells *)
     let rows =
       List.init height (fun y ->
@@ -177,7 +184,8 @@ let view_painting_grid model =
       [ Vdom.elt "tbody" rows ];
       color_selector;
       color_preview;
-      begin_training_button
+      begin_training_button;
+      begin_demonstration_button
     ]
   
     | None -> Vdom.elt "div" [ Vdom.text "PaintingGrid is not available." ]
