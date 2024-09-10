@@ -299,18 +299,33 @@ let distance grid1 grid2 =
   done;
   !total_distance
 
-(* Define the new train_network function with adjusted mutation *)
 let train_network grid =
   let base_mutation_rate = 0.2 in
   let mutation_boost = 0.5 in  (* Boosted mutation rate when grid size increases *)
   let decay_factor = 0.01 in  (* How quickly mutation rate decays over generations *)
-  let max_generations_per_size = 1 in  (* Initial value for the maximum generations *)
-  let population_size = 100 in  (* Initial value for the population size *)
   let crossover_rate = 0.5 in
   let alpha = 0.1 in
   let desired_distance = 1.0 in
   Printf.printf "Starting training\n";
-  let population = Array.init population_size (fun _ -> initialize_network 144 200 16) in
+
+  (* Helper function to calculate population size and generations based on n *)
+  let calculate_population_and_generations n =
+    if n < 8 then
+      (* Linearly decrease population size from 200 to 100 and generations from 20 to 10 *)
+      let gen_size = 200 - ((n - 2) * 100 / 6) in  (* 200 at n=2, 100 at n=8 *)
+      let num_gens = 20 - ((n - 2) * 10 / 6) in    (* 20 at n=2, 10 at n=8 *)
+      (gen_size, num_gens)
+    else if n < 10 then
+      (* Linearly decrease population size from 100 to 40 and generations from 10 to 4 *)
+      let gen_size = 100 - ((n - 8) * 60 / 2) in   (* 100 at n=8, 40 at n=10 *)
+      let num_gens = 10 - ((n - 8) * 6 / 2) in     (* 10 at n=8, 4 at n=10 *)
+      (gen_size, num_gens)
+    else
+      (* Linearly decrease population size from 40 to 10 and generations from 4 to 1 *)
+      let gen_size = 40 - ((n - 10) * 30 / 10) in  (* 40 at n=10, 10 at n=20 *)
+      let num_gens = 4 - ((n - 10) * 3 / 10) in    (* 4 at n=10, 1 at n=20 *)
+      (gen_size, num_gens)
+  in
 
   let rec train population generation n stagnation_counter start_generation =
     if n > 20 then
@@ -326,6 +341,7 @@ let train_network grid =
       let starting_grid = target_grid in
       let hidden = Array.make 12 1.0 in
       Grid.set_cell starting_grid n n (Cell.init (0.0, 0.0, 0.0) 1.0 hidden);
+      
       let evaluate network =
         let nca = CellularAutomaton.init starting_grid (update_rule network) in
         let runner = NcaRunner.init nca in
@@ -335,12 +351,12 @@ let train_network grid =
         network.loss <- Some dist;
         dist
       in
-
+  
       let calculate_adjusted_mutation_rate current_generation start_generation =
         let elapsed_generations = current_generation - start_generation in
         base_mutation_rate +. mutation_boost -. (decay_factor *. float_of_int elapsed_generations)
       in
-
+  
       let rec inner_train population gen_remaining stagnation_counter start_generation =
         if gen_remaining = 0 then population
         else (
@@ -353,22 +369,22 @@ let train_network grid =
           let best_network = Array.get population 0 in
           let best_loss = match best_network.loss with Some l -> l | None -> max_float in
           Printf.printf "Best Loss: %f\n" best_loss;
-
+  
           (* Check if stagnation occurs *)
           let new_stagnation_counter = if best_loss > desired_distance then stagnation_counter + 1 else 0 in
-
+  
           match best_network.loss with
           | Some dist when dist <= desired_distance -> population
           | _ ->
             let adjusted_mutation_rate = calculate_adjusted_mutation_rate generation start_generation in
-            let new_population = Array.init population_size (fun i ->
-              if i < population_size / 2 then Array.get population i
+            let new_population = Array.init (fst (calculate_population_and_generations n)) (fun i ->
+              if i < (fst (calculate_population_and_generations n)) / 2 then Array.get population i
               else if Random.float 1.0 < crossover_rate then
-                let parent1 = Array.get population (Random.int (population_size / 2)) in
-                let parent2 = Array.get population (Random.int (population_size / 2)) in
+                let parent1 = Array.get population (Random.int ((fst (calculate_population_and_generations n)) / 2)) in
+                let parent2 = Array.get population (Random.int ((fst (calculate_population_and_generations n)) / 2)) in
                 crossover2 parent1 parent2 alpha
               else
-                let parent = Array.get population (Random.int (population_size / 2)) in
+                let parent = Array.get population (Random.int ((fst (calculate_population_and_generations n)) / 2)) in
                 if Random.float 1.0 < adjusted_mutation_rate then
                   mutate2 parent new_stagnation_counter
                 else
@@ -377,9 +393,14 @@ let train_network grid =
             inner_train new_population (gen_remaining - 1) new_stagnation_counter start_generation
         )
       in
-
-      let new_population = inner_train population (max_generations_per_size + 20 - n) stagnation_counter start_generation in
+  
+      let (_, gen_count) = calculate_population_and_generations n in
+      let new_population = inner_train population gen_count stagnation_counter start_generation in
       train new_population (generation + 1) (n + 2) stagnation_counter start_generation
   in
-
+  
+  (* Adjust population size dynamically for the initial population based on n *)
+  let (initial_pop_size, _) = calculate_population_and_generations 2 in
+  let population = Array.init initial_pop_size (fun _ -> initialize_network 144 200 16) in
   train population 0 2 0 0
+  

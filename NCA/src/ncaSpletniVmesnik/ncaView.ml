@@ -197,16 +197,9 @@ let view_initial_page () =
       Vdom.elt "h1" [ Vdom.text "Welcome to the Automaton App!" ];
 
       (* Button 1: Growing *)
-      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Growing) ] [ Vdom.text "Growing" ];
-      Vdom.elt "p" [ Vdom.text "In this mode, the automaton will exhibit a growing pattern over time." ];
+      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick) ] [ Vdom.text "Paint" ];
+      Vdom.elt "p" [ Vdom.text "Click on this button to go to PaintPage and draw the grid, on which you want to train your Neural Cellular Automata." ];
 
-      (* Button 2: Persistent *)
-      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Persistent) ] [ Vdom.text "Persistent" ];
-      Vdom.elt "p" [ Vdom.text "In this mode, the automaton will maintain a stable or persistent pattern." ];
-
-      (* Button 3: Regenerating *)
-      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick Regenerating) ] [ Vdom.text "Regenerating" ];
-      Vdom.elt "p" [ Vdom.text "In this mode, the automaton will exhibit a regenerating or cyclical behavior." ];
     ]
 
 (* Page view definitions *)

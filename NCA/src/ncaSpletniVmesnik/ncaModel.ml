@@ -1,6 +1,5 @@
 open Definicije
 open Ai
-open Definicije.TrainAi
 
 (* Define the type for different pages *)
 type page = 
@@ -19,7 +18,7 @@ type msg =
   | KeyPressUp
   | KeyPressDown
   | SetColor of float * float * float * float
-  | ButtonClick of training_mode
+  | ButtonClick
   | Demonstration
   | BeginTraining
 
@@ -28,7 +27,6 @@ type model = {
   current_page : page;
   avtomat : Cell.t NcaRunner.t option;
   color : (float * float * float * float) option;
-  selected_mode : training_mode option;
 }
 
 (* Initialize the model with the initial page *)
@@ -36,7 +34,6 @@ let init () = {
   current_page = InitialPage;
   avtomat = None;
   color = None;
-  selected_mode = None;
 }
 
 (* Function to initialize the grid and NCA runner *)
@@ -164,15 +161,11 @@ let update model = function
 
   | SetColor (r, g, b, a) ->   Printf.printf "Test message\n" ;{ model with color = Some (r, g, b, a) }
 
-  | ButtonClick mode ->
-      { model with current_page = PaintPage; selected_mode = Some mode ; avtomat = init_painting_grid () }
+  | ButtonClick ->
+      { model with current_page = PaintPage; avtomat = init_painting_grid () }
 
   | BeginTraining ->
     Printf.printf "Test message\n" ;
-    let _training_mode = match model.selected_mode with
-      | Some mode -> mode
-      | None -> Growing
-    in
     (* Retrieve the initial grid for training *)
     let initial_grid = NcaRunner.get_grid (Option.get model.avtomat) in
     

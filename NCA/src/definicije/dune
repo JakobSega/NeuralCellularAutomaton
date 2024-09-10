@@ -1,3 +1,3 @@
 (library
  (name definicije)
- (modules avtomat cell cellularAutomaton grid moveRules ncaRunner stanje trainAi trak zagnaniAvtomat))
+ (modules cell cellularAutomaton grid moveRules ncaRunner))

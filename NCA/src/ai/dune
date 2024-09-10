@@ -1,4 +1,4 @@
 (library
  (name ai)
- (modules aiModel network)
+ (modules network)
  (libraries definicije))
