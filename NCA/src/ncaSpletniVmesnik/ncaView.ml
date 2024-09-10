@@ -9,6 +9,18 @@ let color_with_opacity r g b a =
   let opacity = min (max a 0.0) 1.0 in
   (color, opacity)
 
+let view_initial_page () =
+  Vdom.elt "div" [
+    Vdom.elt "h1" [ Vdom.text "Welcome to the Automaton App!" ];
+    
+    (* Instructions *)
+    Vdom.elt "p" [ Vdom.text "This is the home page. From here, you can navigate to other pages of the application." ];
+
+    (* Button 1: Growing *)
+    Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick) ] [ Vdom.text "Paint" ];
+    Vdom.elt "p" [ Vdom.text "Click on this button to go to the Paint Page and draw the grid on which you want to train your Neural Cellular Automata." ];
+  ]
+
 (* View for interactive grid on the GridPage *)
 let view_grid model =
   match model.avtomat with
@@ -17,6 +29,13 @@ let view_grid model =
     let width = Grid.width grid in
     let height = Grid.height grid in
     let cell_size = 8 in
+    
+    (* Instructions for GridPage *)
+    let instructions =
+      Vdom.elt "p" [ Vdom.text "This is the Grid Page. Here, you can interact with the grid. Click on the grid to erase a part of the grid, doulbe click to set a cell bleck.
+       By pressing the arrow keys you can set the update rule of the automaton to a predefined rule that will move all active cells in the direction of the arrow you clicked as the automaton runs.
+       To run the automaton press any key while the table is active and the automaton will advance for one step, pres on a number key n and the automaton will advance for 2**n steps." ] in
+
     let rows =
       List.init height (fun y ->
         let cells = List.init width (fun x ->
@@ -29,50 +48,45 @@ let view_grid model =
                  Vdom.style "width" (Printf.sprintf "%dpx" cell_size);
                  Vdom.style "height" (Printf.sprintf "%dpx" cell_size);
                  Vdom.style "border" "1px solid #ccc";
-                 Vdom.style "padding" "0"; (* Remove padding *)
-                 Vdom.style "margin" "0";  (* Remove margin *)
-                 Vdom.style "box-sizing" "border-box"; (* Include border and padding in the element's total width and height *)
-                 Vdom.style "opacity" (Printf.sprintf "%.2f" opacity); (* Apply opacity *)
-                 Vdom.style "cursor" "pointer"; (* Change cursor to pointer on hover *)
-                 Vdom.onclick (fun _ -> ClickErase (x, y)); (* Handle single click event *)
-                 Vdom.ondblclick (fun _ -> DoubleClick (x, y)); (* Handle double click event *)
+                 Vdom.style "padding" "0"; 
+                 Vdom.style "margin" "0";  
+                 Vdom.style "box-sizing" "border-box"; 
+                 Vdom.style "opacity" (Printf.sprintf "%.2f" opacity); 
+                 Vdom.style "cursor" "pointer"; 
+                 Vdom.onclick (fun _ -> ClickErase (x, y)); 
+                 Vdom.ondblclick (fun _ -> DoubleClick (x, y)); 
                ]
             []
         ) in
         Vdom.elt "tr"
-          ~a:[ Vdom.style "margin" "0"; (* Remove margin *)
-               Vdom.style "padding" "0" ] (* Remove padding *)
+          ~a:[ Vdom.style "margin" "0"; 
+               Vdom.style "padding" "0" ] 
           cells
       )
     in
-    Vdom.elt "table"
-      ~a:[ Vdom.style "border-collapse" "collapse"; (* Ensure borders collapse *)
-           Vdom.style "border-spacing" "0"; (* Remove space between cells *)
-           Vdom.style "width" (Printf.sprintf "%dpx" (width * cell_size));
-           Vdom.onkeydown (fun e ->
-              let key_code = e.which in
-              if key_code >= 48 && key_code <= 57 then (* Check if the key is 0-9 *)
-                KeyPress (key_code - 48)  (* Convert key code to integer *)
-              else
-                match key_code with
-                | 37 -> KeyPressLeft  (* Left arrow key *)
-                | 39 -> KeyPressRight (* Right arrow key *)
-                | 38 -> KeyPressUp    (* Up arrow key *)
-                | 40 -> KeyPressDown  (* Down arrow key *)
-                | _  -> KeyPress 0  (* Default to current rule *)
-           );
-           Vdom.attr "tabindex" "0"; (* Make the table focusable *)
-         ]
-      [ Vdom.elt "tbody" rows ]
+    Vdom.elt "div" [
+      instructions;
+      Vdom.elt "table"
+        ~a:[ Vdom.style "border-collapse" "collapse"; 
+             Vdom.style "border-spacing" "0"; 
+             Vdom.style "width" (Printf.sprintf "%dpx" (width * cell_size)) ]
+        [ Vdom.elt "tbody" rows ]
+    ]
   | None -> Vdom.elt "div" [ Vdom.text "Grid is not available." ]
 
+(* View for the painting grid on the PaintPage *)
 let view_painting_grid model =
   match model.avtomat with
   | Some avtomat ->
     let grid = NcaRunner.get_grid avtomat in
     let width = Grid.width grid in
     let height = Grid.height grid in
-    let cell_size = 20 in  (* Set a size that makes the grid visible *)
+    let cell_size = 20 in
+    
+    (* Instructions for PaintPage *)
+    let instructions =
+      Vdom.elt "p" [ Vdom.text "This is the Paint Page. You can draw on the grid by clicking cells and adjusting the color.
+      You can also start training or run a demonstration by clicking the respective buttons." ] in
     
     (* Color input section *)
     let color_selector =
@@ -158,29 +172,30 @@ let view_painting_grid model =
           Vdom.elt "td"
             ~a:[ Vdom.style "background-color" color;
                  Vdom.style "width" (Printf.sprintf "%dpx" cell_size);
-                 Vdom.style "height" (Printf.sprintf "%dpx" cell_size); (* Ensure square cells *)
+                 Vdom.style "height" (Printf.sprintf "%dpx" cell_size);
                  Vdom.style "border" "1px solid #ccc";
-                 Vdom.style "padding" "0"; (* Remove padding *)
-                 Vdom.style "margin" "0";  (* Remove margin *)
-                 Vdom.style "box-sizing" "border-box"; (* Include border and padding in the element's total width and height *)
-                 Vdom.style "cursor" "pointer"; (* Change cursor to pointer on hover *)
-                 Vdom.onclick (fun _ -> ClickPaint (x, y)) (* Handle click event *)
+                 Vdom.style "padding" "0";
+                 Vdom.style "margin" "0";
+                 Vdom.style "box-sizing" "border-box";
+                 Vdom.style "cursor" "pointer";
+                 Vdom.onclick (fun _ -> ClickPaint (x, y))
                ]
             []
         ) in
         Vdom.elt "tr"
-          ~a:[ Vdom.style "margin" "0"; (* Remove margin *)
-               Vdom.style "padding" "0" ] (* Remove padding *)
+          ~a:[ Vdom.style "margin" "0"; 
+               Vdom.style "padding" "0" ]
           cells
       )
     in
     
     (* Wrap the entire interface in a single div element *)
     Vdom.elt "div" [
-      Vdom.elt "table" ~a:[ Vdom.style "border-collapse" "collapse"; (* Ensure borders collapse *)
-                            Vdom.style "border-spacing" "0"; (* Remove space between cells *)
-                            Vdom.style "width" (Printf.sprintf "%dpx" (width * cell_size)); (* Set width based on number of cells *)
-                            Vdom.style "height" (Printf.sprintf "%dpx" (height * cell_size)) ] (* Set height based on number of cells *)
+      instructions;
+      Vdom.elt "table" ~a:[ Vdom.style "border-collapse" "collapse"; 
+                            Vdom.style "border-spacing" "0"; 
+                            Vdom.style "width" (Printf.sprintf "%dpx" (width * cell_size));
+                            Vdom.style "height" (Printf.sprintf "%dpx" (height * cell_size)) ] 
       [ Vdom.elt "tbody" rows ];
       color_selector;
       color_preview;
@@ -188,19 +203,9 @@ let view_painting_grid model =
       begin_demonstration_button
     ]
   
-    | None -> Vdom.elt "div" [ Vdom.text "PaintingGrid is not available." ]
+  | None -> Vdom.elt "div" [ Vdom.text "PaintingGrid is not available." ]
   
   
-  
-let view_initial_page () =
-  Vdom.elt "div" [
-      Vdom.elt "h1" [ Vdom.text "Welcome to the Automaton App!" ];
-
-      (* Button 1: Growing *)
-      Vdom.elt "button" ~a:[ Vdom.onclick (fun _ -> ButtonClick) ] [ Vdom.text "Paint" ];
-      Vdom.elt "p" [ Vdom.text "Click on this button to go to PaintPage and draw the grid, on which you want to train your Neural Cellular Automata." ];
-
-    ]
 
 (* Page view definitions *)
 let view model =
