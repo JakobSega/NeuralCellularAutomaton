@@ -78,7 +78,7 @@ Projekt zaženemo z uporabo orodja `dune`:
    dune build
    ```
 
-Ob zagonu bo program napisal `ncaSpletniVmesnik.bc.js` in ga shranil v mapo **/html**. Da zaženemo aplikacijo odpremo ncaSpletniVmesnik.htm.
+Ob zagonu bo program napisal `ncaSpletniVmesnik.bc.js` in ga shranil v mapo **/html**. Da zaženemo aplikacijo odpremo ncaSpletniVmesnik.html.
 
 ### Začetna stran
 
